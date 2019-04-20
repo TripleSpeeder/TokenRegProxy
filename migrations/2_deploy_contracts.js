@@ -1,3 +1,4 @@
+const Registry = artifacts.require('TokenReg')
 const RegistryProxy = artifacts.require('RegistryProxy')
 
 const RegistryAddresses = {
@@ -5,6 +6,10 @@ const RegistryAddresses = {
   // other networks: TODO
 }
 
-module.exports = async function(deployer, network) {
-  deployer.deploy(RegistryProxy, RegistryAddresses[network])
+module.exports = function(deployer, network) {
+  // TODO: Only deploy TokenReg on DEV network!
+  // TODO: Use harcoded registry address for non-dev networks!
+  deployer.deploy(Registry).then(function() {
+    return deployer.deploy(RegistryProxy, Registry.address);
+  });
 }

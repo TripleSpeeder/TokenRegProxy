@@ -6,11 +6,10 @@
   "directories": {
     "test": "test"
   },
-  "dependencies": {
-    "token-registry": "^0.1.0",
-    "truffle-contract": "^4.0.12"
+  "dependencies": {},
+  "devDependencies": {
+    "truffle-assertions": "^0.8.2"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "test"
   },

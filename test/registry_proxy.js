@@ -1,67 +1,156 @@
+const Registry = artifacts.require("TokenReg")
 const RegistryProxy = artifacts.require("RegistryProxy")
-const fs = require('fs');
-const RegistryABI = JSON.parse(fs.readFileSync('./abis/TokenReg.json', 'utf8'))
-const RegistryAddress = '0xd1b0801BF6Bb0CF9B3Fd998c69DA7EC8FeB92b9A'
+const truffleAssert = require('truffle-assertions');
 
 contract("RegistryProxy", function(accounts) {
+
+    let registry
+    let proxy
 
     const tokens = [
         {
             id: 0,
-            address: '0xadB97926e25E54eC22F3083657C86E60Efa6377f',
+            addr: '0xadB97926e25E54eC22F3083657C86E60Efa6377f',
             name: 'first',
             tla: "1st",
-            decimals: 10,
+            base: 10,
         },
         {
             id: 1,
-            address: '0xa431051FEcc80f1151C2914c8e198C3Ccf25CaD9',
+            addr: '0xa431051FEcc80f1151C2914c8e198C3Ccf25CaD9',
             name: 'second',
             tla: "2nd",
-            decimals: 5,
+            base: 5,
         },
         {
             id: 2,
-            address: '0xa8C37b72663620938eB2852cEb1D8eC98B27936E',
+            addr: '0xa8C37b72663620938eB2852cEb1D8eC98B27936E',
             name: 'third',
             tla: "3rd",
-            decimals: 0,
+            base: 0,
         },
         {
             id: 3,
-            address: '0xac6a2aaDc9c5C90A347f15A3D33075114895aF55',
+            addr: '0xac6a2aaDc9c5C90A347f15A3D33075114895aF55',
             name: 'fourth',
             tla: "4th",
-            decimals: 2,
+            base: 2,
         },
         {
             id: 4,
-            address: '0xad3443D38bB72a281821c337259107B56c2A4E2a',
+            addr: '0xad3443D38bB72a281821c337259107B56c2A4E2a',
             name: 'fifth',
             tla: "5th",
-            decimals: 10,
+            base: 10,
         },
     ]
 
-    before("Setting up test tokens in registry", async function() {
-        let fee = web3.utils.toWei("1", "ether")
-        let gas = 300000
-        // get instance of registry contract
-        const Registry = new web3.eth.Contract(RegistryABI, RegistryAddress)
-        /*tokens.forEach(async token => {
-            await Registry.methods.register(token.address, token.tla, token.decimals, token.name)
-            .send({
-                from: accounts[0],
-                value: fee,
-                gas: gas,
-            })
-        })*/
+    before("Getting contract instances", async function() {
+        registry = await Registry.deployed()
+        proxy = await RegistryProxy.deployed()
     })
 
-    it("has token count of 5", async function() {
-        const proxy = await RegistryProxy.deployed()
-        let result = await proxy.tokenCount()
-        assert.equal(tokens.length, result)
+    before("Setting up test tokens in registry", async function() {
+        // TODO: Only do this when testing on local DEV network!
+        let fee = web3.utils.toWei("1", "ether")
+        let gas = 300000
+        tokens.forEach(async token => {
+            await registry.register(
+                token.addr,
+                token.tla,
+                token.base,
+                token.name,
+                {
+                    from: accounts[0],
+                    value: fee,
+                    gas: gas,
+                }
+            )
+        })
     })
+
+    it("has correct tokenCount", async function() {
+        let tokenCount = await proxy.tokenCount()
+        assert.strictEqual(tokenCount.toNumber(), tokens.length)
+    })
+
+    it("can get all tokens in batch mode", async function() {
+        const allTokens = await proxy.allTokensAsStructs()
+        assert.lengthOf(allTokens, tokens.length, "Length does not match")
+        for (let i=0; i<tokens.length; i++) {
+            assert.containsAllKeys(allTokens[i], ['id', 'name', 'addr', 'tla', 'base', 'owner'])
+            assert.strictEqual(parseInt(allTokens[i].id), tokens[i].id, "id does not match")
+            assert.strictEqual(allTokens[i].name, tokens[i].name, "name does not match")
+            assert.strictEqual(allTokens[i].addr, tokens[i].addr, "address does not match")
+            assert.strictEqual(allTokens[i].tla, tokens[i].tla, "tla does not match")
+            // TODO: Doublecheck why base is a string and not a BN?
+            assert.strictEqual(parseInt(allTokens[i].base), tokens[i].base, "base does not match")
+            assert.strictEqual(allTokens[i].owner, accounts[0], "owner does not match")
+        }
+    })
+
+    it("can get all tokens one by one", async function() {
+        let tokenCount = await proxy.tokenCount()
+        for (let i=0; i<tokenCount.toNumber(); i++) {
+            const token = await proxy.getToken(i);
+            assert.containsAllKeys(token, ['id', 'name', 'addr', 'tla', 'base', 'owner'])
+            assert.strictEqual(parseInt(token.id), tokens[i].id, "id does not match")
+            assert.strictEqual(token.name, tokens[i].name, "name does not match")
+            assert.strictEqual(token.addr, tokens[i].addr, "address does not match")
+            assert.strictEqual(token.tla, tokens[i].tla, "tla does not match")
+            // TODO: Doublecheck why base is a string and not a BN?
+            assert.strictEqual(parseInt(token.base), tokens[i].base, "base does not match")
+            assert.strictEqual(token.owner, accounts[0], "owner does not match")
+        }
+    })
+
+    it("reduces tokencount when unregistering", async function() {
+        const id=1  // unregister second token
+        let gas = 300000
+        await registry.unregister(
+            id,
+            {
+                from: accounts[0],
+                gas: gas,
+            })
+        const newCount = await proxy.tokenCount()
+        assert.strictEqual(newCount.toNumber(),tokens.length-1)
+    })
+
+    it("Can't get unregistered token", async function() {
+        const id=1 // has been unregistered before
+        await truffleAssert.reverts(proxy.getToken(id));
+    })
+
+    it("Still can get remaining tokens in batch mode", async function() {
+        const allTokens = await proxy.allTokensAsStructs()
+        assert.lengthOf(allTokens, tokens.length-1, "Length does not match")
+        for (let i=0; i<allTokens.length; i++) {
+            assert.containsAllKeys(allTokens[i], ['id', 'name', 'addr', 'tla', 'base', 'owner'])
+            const id = allTokens[i].id
+            assert.strictEqual(allTokens[i].name, tokens[id].name, "name does not match")
+            assert.strictEqual(allTokens[i].addr, tokens[id].addr, "address does not match")
+            assert.strictEqual(allTokens[i].tla, tokens[id].tla, "tla does not match")
+            // TODO: Doublecheck why base is a string and not a BN?
+            assert.strictEqual(parseInt(allTokens[i].base), tokens[id].base, "base does not match")
+            assert.strictEqual(allTokens[i].owner, accounts[0], "owner does not match")
+        }
+    })
+
+    it("Still can get remaining tokens one by one", async function() {
+        // Check all IDs except 1, which has been unregistered before
+        [0,2,3,4,5].forEach(async i => {
+            const token = await proxy.getToken(i);
+            assert.containsAllKeys(token, ['id', 'name', 'addr', 'tla', 'base', 'owner'])
+            assert.strictEqual(token.id, tokens[i].id, "id does not match")
+            assert.strictEqual(token.name, tokens[i].name, "name does not match")
+            assert.strictEqual(token.addr, tokens[i].addr, "address does not match")
+            assert.strictEqual(token.tla, tokens[i].tla, "tla does not match")
+            // TODO: Doublecheck why base is a string and not a BN?
+            assert.strictEqual(parseInt(token.base), tokens[i].base, "base does not match")
+            assert.strictEqual(token.owner, accounts[0], "owner does not match")
+        })
+    })
+
 })
 
