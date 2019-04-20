@@ -1,16 +1,24 @@
+const Registry = artifacts.request("Registry")
 const RegistryProxy = artifacts.require("RegistryProxy")
 
-const devRegistryAddress = "0x854cC49b75803206Dd0739AC245DdD1f30e4BEE8"
-
-module.exports = function(deployer, network) {
+module.exports = async function(deployer, network) {
   switch (network) {
     case "development":
-      deployer.deploy(RegistryProxy, devRegistryAddress)
+      // For local dev deploy both Registry and Registryproxy
+      const Registry = await deployer.deploy(Registry)
+      deployer.deploy(RegistryProxy, Registry.address)
       break
     case "Kovan":
+      // TODO: Find token registry address
+      deployer.deploy(RegistryProxy, "0xFindMe")
     case "Ropsten":
+      // TODO: Find token registry address
+      deployer.deploy(RegistryProxy, "0xFindMe")
     case "Rinkeby":
+      // TODO: Find token registry address
+      deployer.deploy(RegistryProxy, "0xFindMe")
     case "Main":
-      // TODO
+      // TODO: Find token registry address
+      deployer.deploy(RegistryProxy, "0xFindMe")
   }
 }
