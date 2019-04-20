@@ -1,0 +1,32 @@
+{
+  "name": "token-reg-proxy",
+  "version": "0.1.0",
+  "description": "Proxy contract to Parity Technologies ERC20 token registry that enables faster retrieval of all token definitions",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "token-registry": "^0.1.0",
+    "truffle-contract": "^4.0.12"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TripleSpeeder/TokenRegProxy.git"
+  },
+  "keywords": [
+    "Ethereum",
+    "ERC20",
+    "solidity"
+  ],
+  "author": "Michael Bauer",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TripleSpeeder/TokenRegProxy/issues"
+  },
+  "homepage": "https://github.com/TripleSpeeder/TokenRegProxy#readme"
+}
