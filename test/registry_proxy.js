@@ -74,7 +74,7 @@ contract("RegistryProxy", function(accounts) {
         assert.strictEqual(tokenCount.toNumber(), tokens.length)
     })
 
-    it("can get all tokens in batch mode", async function() {
+    it("can get all tokens in batch mode using allTokensAsStructs()", async function() {
         const allTokens = await proxy.allTokensAsStructs()
         assert.lengthOf(allTokens, tokens.length, "Length does not match")
         for (let i=0; i<tokens.length; i++) {
@@ -86,6 +86,26 @@ contract("RegistryProxy", function(accounts) {
             // TODO: Doublecheck why base is a string and not a BN?
             assert.strictEqual(parseInt(allTokens[i].base), tokens[i].base, "base does not match")
             assert.strictEqual(allTokens[i].owner, accounts[0], "owner does not match")
+        }
+    })
+
+    it("can get all tokens in batch mode using allTokensAsArrays()", async function() {
+        // var [ids, addresses, tlas, bases, names, owners] = await proxy.allTokensAsArrays()
+        const result = await proxy.allTokensAsArrays()
+        assert.lengthOf(result.ids, tokens.length, "Ids length does not match")
+        assert.lengthOf(result.addresses, tokens.length, "Addresses length does not match")
+        assert.lengthOf(result.tlas, tokens.length, "Tlas length does not match")
+        assert.lengthOf(result.bases, tokens.length, "Bases length does not match")
+        assert.lengthOf(result.names, tokens.length, "Names length does not match")
+        assert.lengthOf(result.owners, tokens.length, "Owners length does not match")
+        for (let i=0; i<tokens.length; i++) {
+            assert.strictEqual(parseInt(result.ids[i]), tokens[i].id, "id does not match")
+            assert.strictEqual(result.names[i], tokens[i].name, "name does not match")
+            assert.strictEqual(result.addresses[i], tokens[i].addr, "address does not match")
+            assert.strictEqual(result.tlas[i], tokens[i].tla, "tla does not match")
+            // TODO: Doublecheck why base is a string and not a BN?
+            assert.strictEqual(parseInt(result.bases[i]), tokens[i].base, "base does not match")
+            assert.strictEqual(result.owners[i], accounts[0], "owner does not match")
         }
     })
 

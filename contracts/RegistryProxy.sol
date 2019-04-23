@@ -82,10 +82,10 @@ contract RegistryProxy {
     function allTokensAsStructs()
     external
     view
-    returns (Token[] memory)
+    returns (Token[] memory tokens)
     {
         uint numExpectedTokens = registry.tokenCount();
-        Token[] memory tokens = new Token[](numExpectedTokens);
+        tokens = new Token[](numExpectedTokens);
         uint numFoundTokens = 0;
         uint currentId = 0;
         while(numFoundTokens < numExpectedTokens) {
@@ -102,6 +102,56 @@ contract RegistryProxy {
             }
             currentId++;
         }
-        return tokens;
+    }
+
+    /**
+        @notice Get all tokens available in registry contract
+        @dev The registry does only provide the count of valid tokens, but not a list of existing tokenIDs. Since it
+        is possible to unregister existing token entries there will be "gaps" in the tokenID range. Therefor we need to
+        keep looking for tokens with increasing ID until we have found the expected number of tokens.
+        @return IDs, addresses, tlas, bases, names, owners as individual arrays
+    */
+    function allTokensAsArrays()
+    external
+    view
+    returns (
+        uint[] memory ids,
+        address[] memory addresses,
+        string[] memory tlas,
+        uint[] memory bases,
+        string[] memory names,
+        address[] memory owners
+    )
+    {
+        // prepare arrays
+        uint numExpectedTokens = registry.tokenCount();
+        ids = new uint[](numExpectedTokens);
+        addresses = new address[](numExpectedTokens);
+        tlas = new string[](numExpectedTokens);
+        bases = new uint[](numExpectedTokens);
+        names = new string[](numExpectedTokens);
+        owners = new address[](numExpectedTokens);
+
+        uint numFoundTokens = 0;
+        uint currentId = 0;
+        while(numFoundTokens < numExpectedTokens) {
+            // registry will revert in case a token has been deleted. This would break the whole call, so first
+            // check if the call will succeed via staticcall.
+            (bool success, /* bytes memory returnData*/ ) = address(registry).staticcall(abi.encodeWithSignature("token(uint256)", currentId));
+            if(success){
+                // Perfect, the token 'id' is not deleted. As there is no sane way to obtain the mixture of
+                // strings and uints from 'bytes memory returnData' just issue a normal token(id) call, now
+                // that I know it won't revert.
+                ( address addr, string memory tla, uint base, string memory name, address owner ) = registry.token(currentId);
+                ids[numFoundTokens] = currentId;
+                addresses[numFoundTokens] = addr;
+                tlas[numFoundTokens] = tla;
+                bases[numFoundTokens] = base;
+                names[numFoundTokens] = name;
+                owners[numFoundTokens] = owner;
+                numFoundTokens++;
+            }
+            currentId++;
+        }
     }
 }
