@@ -109,10 +109,42 @@ contract("RegistryProxy", function(accounts) {
         }
     })
 
-    it("can get all tokens one by one", async function() {
+    it("can get all tokens one by one by id", async function() {
         let tokenCount = await proxy.tokenCount()
         for (let i=0; i<tokenCount.toNumber(); i++) {
             const token = await proxy.getToken(i);
+            assert.containsAllKeys(token, ['id', 'name', 'addr', 'tla', 'base', 'owner'])
+            assert.strictEqual(parseInt(token.id), tokens[i].id, "id does not match")
+            assert.strictEqual(token.name, tokens[i].name, "name does not match")
+            assert.strictEqual(token.addr, tokens[i].addr, "address does not match")
+            assert.strictEqual(token.tla, tokens[i].tla, "tla does not match")
+            // TODO: Doublecheck why base is a string and not a BN?
+            assert.strictEqual(parseInt(token.base), tokens[i].base, "base does not match")
+            assert.strictEqual(token.owner, accounts[0], "owner does not match")
+        }
+    })
+
+    it("can get all tokens one by one by address", async function() {
+        let tokenCount = await proxy.tokenCount()
+        assert.lengthOf(tokens, tokenCount.toNumber())
+        for (let i=0; i<tokenCount.toNumber(); i++) {
+            const token = await proxy.fromAddress(tokens[i].addr);
+            assert.containsAllKeys(token, ['id', 'name', 'addr', 'tla', 'base', 'owner'])
+            assert.strictEqual(parseInt(token.id), tokens[i].id, "id does not match")
+            assert.strictEqual(token.name, tokens[i].name, "name does not match")
+            assert.strictEqual(token.addr, tokens[i].addr, "address does not match")
+            assert.strictEqual(token.tla, tokens[i].tla, "tla does not match")
+            // TODO: Doublecheck why base is a string and not a BN?
+            assert.strictEqual(parseInt(token.base), tokens[i].base, "base does not match")
+            assert.strictEqual(token.owner, accounts[0], "owner does not match")
+        }
+    })
+
+    it("can get all tokens one by one by TLA", async function() {
+        let tokenCount = await proxy.tokenCount()
+        assert.lengthOf(tokens, tokenCount.toNumber())
+        for (let i=0; i<tokenCount.toNumber(); i++) {
+            const token = await proxy.fromTLA(tokens[i].tla);
             assert.containsAllKeys(token, ['id', 'name', 'addr', 'tla', 'base', 'owner'])
             assert.strictEqual(parseInt(token.id), tokens[i].id, "id does not match")
             assert.strictEqual(token.name, tokens[i].name, "name does not match")
@@ -137,9 +169,20 @@ contract("RegistryProxy", function(accounts) {
         assert.strictEqual(newCount.toNumber(),tokens.length-1)
     })
 
-    it("Can't get unregistered token", async function() {
+    it("Can't get unregistered token by id", async function() {
         const id=1 // has been unregistered before
         await truffleAssert.reverts(proxy.getToken(id));
+    })
+
+    it("Can't get unregistered token by address", async function() {
+        const id=1 // has been unregistered before
+        // TODO: Extend truffleAssert with error type "invalid address"
+        await truffleAssert.fails(proxy.fromAddress(tokens[id].addr));
+    })
+
+    it("Can't get unregistered token by TLA", async function() {
+        const id=1 // has been unregistered before
+        await truffleAssert.reverts(proxy.fromTLA(tokens[id].tla));
     })
 
     it("Still can get remaining tokens in batch mode", async function() {

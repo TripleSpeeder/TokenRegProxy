@@ -4,12 +4,29 @@ pragma experimental ABIEncoderV2;
 // token registry contract interface
 contract Registry {
     function tokenCount() public view returns (uint);
-    function token(uint id) external view returns (
+    function token(uint _id) external view returns (
         address addr,
         string memory tla,
         uint base,
         string memory name,
         address owner
+    );
+    function fromAddress(address _addr) external view returns (
+        uint id,
+        string memory tla,
+        uint base,
+        string memory name,
+        address owner
+    );
+    function fromTLA(string calldata _tla) external view returns (
+        uint id,
+        address addr,
+        uint base,
+        string memory name,
+        address owner
+    );
+    function meta(uint _id, bytes32 _key) external view returns (
+        bytes32
     );
 }
 
@@ -44,7 +61,7 @@ contract RegistryProxy {
         registry = Registry(_registry);
     }
 
-    /*
+    /**
       Get number of tokens registered
     */
     function tokenCount() public view returns (uint) {
@@ -67,6 +84,48 @@ contract RegistryProxy {
         token.id = _id;
         token.addr = addr;
         token.tla = tla;
+        token.base = base;
+        token.name = name;
+        token.owner = owner;
+    }
+
+    /**
+      @dev Get a single token by it's contract address. Reverts if there is no token registered at provided address.
+      @param _address The contract address of the token to get
+      @return Token struct
+    */
+    function fromAddress(
+        address _address
+    )
+    external
+    view
+    returns (Token memory token)
+    {
+        ( uint id, string memory tla, uint base, string memory name, address owner ) = registry.fromAddress(_address);
+        token.id = id;
+        token.addr = _address;
+        token.tla = tla;
+        token.base = base;
+        token.name = name;
+        token.owner = owner;
+    }
+
+    /**
+      @dev Get a single token by it's TLA. Reverts if there is no token registered with provided TLA.
+      @param _TLA The TLA of the token to get
+      @return Token struct
+    */
+    function fromTLA(
+        string calldata _TLA
+    )
+    external
+    view
+    returns (Token memory token)
+    {
+        ( uint id, address addr, uint base, string memory name, address owner ) = registry.fromTLA(_TLA);
+        token.id = id;
+        token.addr = addr;
+        token.tla = _TLA;
         token.base = base;
         token.name = name;
         token.owner = owner;
